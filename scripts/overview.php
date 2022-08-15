@@ -1,5 +1,5 @@
 <?php
-error_reporting(E_ERROR);
+error_reporting(E_ALL);
 ini_set('display_errors',1);
 ini_set('session.gc_maxlifetime', 7200);
 session_set_cookie_params(7200);
@@ -38,9 +38,14 @@ if(isset($_GET['ajax_detections']) && $_GET['ajax_detections'] == "true" && isse
     header("refresh: 0;");
   }
   $result4 = $statement4->execute();
+  "DUMP !:".var_dump($_SESSION)."<br>";
   if(!isset($_SESSION['images'])) {
+    echo "1: SESSION is null<br>";
     $_SESSION['images'] = [];
+  } else {
+    echo "1: SESSION is NOT null<br>";
   }
+  "DUMP 2: ".var_dump($_SESSION); echo "<br>";
   $iterations = 0;
   $lines;
   // hopefully one of the 5 most recent detections has an image that is valid, we'll use that one as the most recent detection until the newer ones get their images created
@@ -77,8 +82,10 @@ if(isset($_GET['ajax_detections']) && $_GET['ajax_detections'] == "true" && isse
         // if we already searched flickr for this species before, use the previous image rather than doing an unneccesary api call
         $key = array_search($comname, array_column($_SESSION['images'], 0));
         if($key !== false) {
+        echo "2: ".$key."<br>";
           $image = $_SESSION['images'][$key];
         } else {
+          echo "2: NO KEY";
           // only open the file once per script execution
           if(!isset($lines)) {
             $lines = file($home."/BirdNET-Pi/model/labels_flickr.txt");
