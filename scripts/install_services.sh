@@ -187,7 +187,7 @@ install_Caddyfile() {
     cp /etc/caddy/Caddyfile{,.original}
   fi
   if ! [ -z ${CADDY_PWD} ];then
-  HASHWORD=$(caddy hash-password -plaintext ${CADDY_PWD})
+  HASHWORD=$(caddy hash-password --plaintext "${CADDY_PWD}")
   cat << EOF > /etc/caddy/Caddyfile
 http:// ${BIRDNETPI_URL} {
   root * ${EXTRACTED}
@@ -405,12 +405,76 @@ EOF
   systemctl enable livestream.service
 }
 
-install_cleanup_cron() {
-  sed "s/\$USER/$USER/g" $my_dir/templates/cleanup.cron >> /etc/crontab
+install_cleanup_timer() {
+  # Set timer to run 60 secs after it is first started
+  # Set timer to run at 1 hr intervals after first run
+  cat << EOF > $HOME/BirdNET-Pi/templates/cleanup.timer
+[Unit]
+Description=Timer to trigger cleanup.service Hourly 
+Documentation=man:systemd.timer(5) man:systemd.time(7)
+
+[Timer]
+OnActiveSec=60
+OnUnitActiveSec=1hr
+
+[Install]
+WantedBy=timers.target
+EOF
+  [ -f /etc/systemd/system/cleanup.timer ] && rm /etc/systemd/system/cleanup.timer
+  ln -sf $HOME/BirdNET-Pi/templates/cleanup.timer /etc/systemd/system
+  systemctl enable cleanup.timer
 }
 
-install_weekly_cron() {
-  sed "s/\$USER/$USER/g" $my_dir/templates/weekly_report.cron >> /etc/crontab
+install_cleanup_service() {
+  cat << END > $HOME/BirdNET-Pi/templates/cleanup.service
+[Unit]
+Description="BirdNET cleanup frees space in BirdNET Recording directory"
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cleanup.sh
+END
+  [ -f /etc/systemd/system/cleanup.service ] && rm /etc/systemd/system/cleanup.service
+  ln -sf $HOME/BirdNET-Pi/templates/cleanup.service /etc/systemd/system
+  # DO NOT ENABLE THIS SERVICE. LET cleanup.timer TRIGGER IT
+}
+
+install_weekly_report_timer() {
+  # Set timer to run 60 secs after it is first started
+  # Set timer to run at midnight on Sunday weekly
+  cat << EOF > $HOME/BirdNET-Pi/templates/weekly_report.timer
+[Unit]
+Description=Sunday Weekly Timer to trigger weekly_report.service 
+Documentation=man:systemd.timer(5) man:systemd.time(7)
+
+[Timer]
+OnActiveSec=60
+OnCalendar=Sunday *-*-* 00:00:00
+
+OnUnitActiveSec=1hr
+
+[Install]
+WantedBy=timers.target
+EOF
+  [ -f /etc/systemd/system/weekly_report.timer ] && rm /etc/systemd/system/weekly_report.timer
+  ln -sf $HOME/BirdNET-Pi/templates/weekly_report.timer /etc/systemd/system
+  systemctl enable weekly_report.timer
+}
+
+install_weekly_report_service() {
+  cat << END > $HOME/BirdNET-Pi/templates/weekly_report.service
+[Unit]
+Description="BirdNET weekly_report is sent if weekly apprise notifications are enabled"
+
+[Service]
+User=$USER
+Type=oneshot
+ExecStart=/usr/local/bin/weekly_report.sh
+END
+  [ -f /etc/systemd/system/weekly_report.service ] && rm /etc/systemd/system/weekly_report.service
+  ln -sf $HOME/BirdNET-Pi/templates/weekly_report.service /etc/systemd/system
+  # DO NOT ENABLE THIS SERVICE. LET weekly_report.timer TRIGGER IT
+
 }
 
 chown_things() {
@@ -437,8 +501,10 @@ install_services() {
   install_gotty_logs
   install_phpsysinfo
   install_livestream_service
-  install_cleanup_cron
-  install_weekly_cron
+  install_cleanup_timer
+  install_cleanup_service
+  install_weekly_report_timer
+  install_weekly_report_service
 
   create_necessary_dirs
   generate_BirdDB
