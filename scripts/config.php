@@ -85,8 +85,8 @@ if(isset($_GET["latitude"])){
     $lang_config = parse_ini_file('./scripts/firstrun.ini');
   }
   if ($language != $lang_config['DATABASE_LANG']){
-    $user = trim(shell_exec("awk -F: '/1000/{print $1}' /etc/passwd"));
-    $home = trim(shell_exec("awk -F: '/1000/{print $6}' /etc/passwd"));
+    $user = trim(shell_exec("id -u"));
+    $home = trim(shell_exec("awk -F: -v username=$(id -un) '$1==username {print $6}' /etc/passwd"));
 
     // Archive old language file
     syslog_shell_exec("cp -f $home/BirdNET-Pi/model/labels.txt $home/BirdNET-Pi/model/labels.txt.old", $user);
@@ -135,9 +135,8 @@ if(isset($_GET["latitude"])){
   fwrite($fh2, $contents2);
 
   if(isset($apprise_input)){
-    $user = shell_exec("awk -F: '/1000/{print $1}' /etc/passwd");
-    $home = shell_exec("awk -F: '/1000/{print $6}' /etc/passwd");
-    $home = trim($home);
+    $user = trim(shell_exec("id -u"));
+    $home = trim(shell_exec("awk -F: -v username=$(id -un) '$1==username {print $6}' /etc/passwd"));
 
     $appriseconfig = fopen($home."/BirdNET-Pi/apprise.txt", "w");
     fwrite($appriseconfig, $apprise_input);
@@ -150,9 +149,8 @@ if(isset($_GET["latitude"])){
 if(isset($_GET['sendtest']) && $_GET['sendtest'] == "true") {
   $db = new SQLite3('./birds.db', SQLITE3_OPEN_CREATE | SQLITE3_OPEN_READWRITE);
 
-  $user = shell_exec("awk -F: '/1000/{print $1}' /etc/passwd");
-  $home = shell_exec("awk -F: '/1000/{print $6}' /etc/passwd");
-  $home = trim($home);
+  $user = trim(shell_exec("id -u"));
+  $home = trim(shell_exec("awk -F: -v username=$(id -un) '$1==username {print $6}' /etc/passwd"));
 
   if (file_exists('./thisrun.txt')) {
     $config = parse_ini_file('./thisrun.txt');
@@ -246,9 +244,8 @@ if (file_exists('./scripts/thisrun.txt')) {
 } elseif (file_exists('./scripts/firstrun.ini')) {
   $config = parse_ini_file('./scripts/firstrun.ini');
 }
-$user = shell_exec("awk -F: '/1000/{print $1}' /etc/passwd");
-$home = shell_exec("awk -F: '/1000/{print $6}' /etc/passwd");
-$home = trim($home);
+$user = trim(shell_exec("id -u"));
+$home = trim(shell_exec("awk -F: -v username=$(id -un) '$1==username {print $6}' /etc/passwd"));
 if (file_exists($home."/BirdNET-Pi/apprise.txt")) {
   $apprise_config = file_get_contents($home."/BirdNET-Pi/apprise.txt");
 } else {
@@ -311,7 +308,7 @@ function sendTestNotification(e) {
       <h2>Notifications</h2>
       <p><a target="_blank" href="https://github.com/caronc/apprise/wiki">Apprise Notifications</a> can be setup and enabled for 70+ notification services. Each service should be on its own line.</p>
       <label for="apprise_input">Apprise Notifications Configuration: </label><br>
-      <textarea placeholder="mailto://{user}:{password}@gmail.com
+      <textarea placeholder="mailto://{user}:{application-password}@gmail.com
 tgram://{bot_token}/{chat_id}
 twitter://{ConsumerKey}/{ConsumerSecret}/{AccessToken}/{AccessSecret}
 https://discordapp.com/api/webhooks/{WebhookID}/{WebhookToken}

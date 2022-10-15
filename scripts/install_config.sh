@@ -8,6 +8,10 @@ echo "Beginning $0"
 birdnet_conf=$my_dir/birdnet.conf
 
 install_config() {
+  [ -f $birdnet_conf ] && mv $birdnet_conf ${birdnet_conf}-$(date --iso-8601=seconds) \
+  && echo "Backup made of $birdnet_conf with the current timestamp."
+  # Kind to users who didn't backup their customized values
+
   cat << EOF > $birdnet_conf
 ################################################################################
 #                    Configuration settings for BirdNET-Pi                     #
@@ -206,11 +210,8 @@ IDFILE=$HOME/BirdNET-Pi/IdentifiedSoFar.txt
 EOF
 }
 
-# Checks for a birdnet.conf file
-if ! [ -f ${birdnet_conf} ];then
-  install_config
-fi
-chmod g+w ${birdnet_conf}
+install_config
+chmod g+w $birdnet_conf
 [ -d /etc/birdnet ] || sudo mkdir /etc/birdnet
 sudo ln -sf $birdnet_conf /etc/birdnet/birdnet.conf
 grep -ve '^#' -e '^$' /etc/birdnet/birdnet.conf > $my_dir/firstrun.ini

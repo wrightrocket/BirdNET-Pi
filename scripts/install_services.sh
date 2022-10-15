@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # This installs the services that have been selected
 set -x # Uncomment to enable debugging
-trap 'rm -f ${tmpfile}' EXIT
+trap 'rm -f $tmpfile' EXIT
 trap 'exit 1' SIGINT SIGHUP
 tmpfile=$(mktemp)
 
@@ -21,14 +21,6 @@ install_depends() {
     pulseaudio avahi-utils sox libsox-fmt-mp3 php php-fpm php-curl php-xml \
     php-zip icecast2 swig ffmpeg wget unzip curl cmake make bc libjpeg-dev \
     zlib1g-dev python3-dev python3-pip python3-venv lsof
-}
-
-
-set_hostname() {
-  if [ "$(hostname)" == "raspberrypi" ];then
-    hostnamectl set-hostname birdnetpi
-    sed -i 's/raspberrypi/birdnetpi/g' /etc/hosts
-  fi
 }
 
 update_etc_hosts() {
@@ -150,7 +142,7 @@ install_recording_service() {
 [Unit]
 Description=BirdNET Recording
 [Service]
-Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=XDG_RUNTIME_DIR=/run/user/$(id -u)
 Restart=always
 Type=simple
 RestartSec=3
@@ -169,7 +161,7 @@ install_custom_recording_service() {
 [Unit]
 Description=BirdNET Custom Recording
 [Service]
-Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=XDG_RUNTIME_DIR=/run/user/$(id -u)
 Restart=always
 Type=simple
 RestartSec=3
@@ -221,12 +213,18 @@ http:// ${BIRDNETPI_URL} {
   reverse_proxy /log* localhost:8080
   reverse_proxy /stats* localhost:8501
   reverse_proxy /terminal* localhost:8888
+  log {
+    output file /var/log/caddy-$(hostname).log
+  }
 }
 EOF
   else
     cat << EOF > /etc/caddy/Caddyfile
 http:// ${BIRDNETPI_URL} {
   root * ${EXTRACTED}
+  log {
+    output file /var/log/caddy-$(hostname).log
+  }
   file_server browse
   handle /By_Date/* {
     file_server browse
@@ -392,7 +390,7 @@ Description=BirdNET-Pi Live Stream
 After=network-online.target
 Requires=network-online.target
 [Service]
-Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=XDG_RUNTIME_DIR=/run/user/$(id -u)
 Restart=always
 Type=simple
 RestartSec=3
